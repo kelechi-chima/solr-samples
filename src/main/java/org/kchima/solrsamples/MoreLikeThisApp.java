@@ -23,7 +23,7 @@ public class MoreLikeThisApp {
 
     private static Logger log = LoggerFactory.getLogger(MoreLikeThisApp.class);
 
-    private static final String[] FIELDS_TO_RETURN = new String[] {"dc_title", "brc_abstract"};
+    private String[] fieldsToReturn;
 
     private final List<SolrServer> solrServers;
 
@@ -32,6 +32,10 @@ public class MoreLikeThisApp {
         for (String baseUrl : baseUrls) {
             solrServers.add(new HttpSolrServer(baseUrl));
         }
+    }
+
+    public void setFieldsToReturn(String[] fieldsToReturn) {
+        this.fieldsToReturn = fieldsToReturn;
     }
 
     public List<SolrDocument> getRelatedDocuments(String field, String value) throws SolrServerException {
@@ -52,7 +56,7 @@ public class MoreLikeThisApp {
         for (SolrServer solrServer : solrServers) {
             SolrQuery q = new SolrQuery(field + ":" + value);
             q.set(CommonParams.ROWS, "1");
-            q.set(CommonParams.FL, FIELDS_TO_RETURN);
+            q.set(CommonParams.FL, fieldsToReturn);
             QueryResponse rsp = solrServer.query(q);
             SolrDocumentList results = rsp.getResults();
 
@@ -72,7 +76,7 @@ public class MoreLikeThisApp {
     private List<SolrDocument> findRelatedDocs(SolrDocument doc) throws SolrServerException {
         List<SolrDocument> docs = new ArrayList<>();
 
-        String docContent = getContents(doc, FIELDS_TO_RETURN);
+        String docContent = getContents(doc, fieldsToReturn);
 
         for (SolrServer solrServer : solrServers) {
             SolrQuery q = new SolrQuery();
@@ -125,26 +129,6 @@ public class MoreLikeThisApp {
             }
         }
     }
-
-    public static void main(String[] args) throws Exception {
-        MoreLikeThisApp app = new MoreLikeThisApp("http://localhost:8181/collection1", "http://localhost:8282/collection1");
-        List<SolrDocument> relatedDocs = app.getRelatedDocuments("s2_id", "black-holes/all-black-holes/rotating-black-holes;withtext1/withtext1/1234567890123.pdf");
-
-        logRelatedDocs(relatedDocs);
-    }
-
-    private static void logRelatedDocs(List<SolrDocument> relatedDocs) {
-        log.debug("Found {} related docs", relatedDocs.size());
-
-        for (SolrDocument doc : relatedDocs) {
-            StringBuilder b = new StringBuilder();
-            for (String field : FIELDS_TO_RETURN) {
-                b.append(field).append("=").append((String) doc.getFieldValue(field)).append(",");
-            }
-            log.debug("doc[{}]", b.toString());
-        }
-    }
-
 
     private void logInterestingTerms(NamedList<Object> response) {
         if (response != null && response.get("interestingTerms") != null) {
